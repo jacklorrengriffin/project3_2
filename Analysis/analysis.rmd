@@ -1,0 +1,83 @@
+---
+title: "analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(readr)
+my_penguins <- read_csv("../Data/my_penguins.csv")
+source("../Code/my_rf_cv.R")
+```
+
+```{r}
+data(my_penguins)
+my_penguins <- na.omit(my_penguins)
+
+cv_ests <- data.frame(rep(0, 90), rep(0, 90))
+colnames(cv_ests) <- c("k", "cv")
+
+for (i in 1:30) {
+    cv_ests[i, 1] <- "2"
+    cv_ests[i, 2] <- my_rf_cv(2)
+}
+for (i in 31:60) {
+    cv_ests[i, 1] <- "5"
+    cv_ests[i, 2] <- my_rf_cv(5)
+}
+for (i in 61:90) {
+    cv_ests[i, 1] <- "10"
+    cv_ests[i, 2] <- my_rf_cv(10)
+}
+
+ggplot(data = cv_ests, aes(x = k, y = cv, group = k)) +
+  geom_boxplot() +
+  labs(title = "k-Fold Cross-Validation Estimate") +
+  theme_bw()
+
+data_2 <- c(mean(cv_ests[which(cv_ests$k == "2"), ]$cv),
+            sd(cv_ests[which(cv_ests$k == "2"), ]$cv))
+data_5 <- c(mean(cv_ests[which(cv_ests$k == "5"), ]$cv),
+            sd(cv_ests[which(cv_ests$k == "5"), ]$cv))
+data_10 <- c(mean(cv_ests[which(cv_ests$k == "10"), ]$cv),
+            sd(cv_ests[which(cv_ests$k == "10"), ]$cv))
+
+table <- matrix(c(data_2, data_5, data_10), nrow = 3, ncol = 2, byrow = TRUE)
+rownames(table) <- c("k = 2", "k = 5", "k = 10")
+colnames(table) <- c("Mean", "SD")
+as.table(table)
+```
+
+We predict body mass using bill length, bill depth, and flipper length using k = 2, 5, and 10. The box plots clearly show that as the number of folds increases, the standard deviation decrasesand and mean both decrease. This is likely because the more folds we include, the more accurate the predicitons become and the less likely they are to overfit.
+
+```{r}
+ggsave("mse.png", plot = last_plot(), 
+       path = "../Output/Figures")
+saveRDS(table, "../Output/Results/summary.rds")
+```
+
